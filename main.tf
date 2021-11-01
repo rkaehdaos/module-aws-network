@@ -1,26 +1,38 @@
+# AWS 공급자 선언 - 테라폼이 AWS API와 통신하기 위한 라이브러리를 다운받아 설치해야함을 선언
+# (버전에 따라 달라진다는데 과연)
 provider "aws" {
   region = var.aws_region
 }
 
+# locals 블럭을 사용해서 2개의 로컬 변수 지정
+# - 로컬 변수는 AWS 콘솔에서 환경별 리소스 구별하는데 도움이 되는 이름 정의
+# - 동일한 AWS 계정에서 여러 환경 생성시 고유 이름 보장하므로 중요
 locals {
   vpc_name     = "${var.env_name} ${var.vpc_name}"
   cluster_name = "${var.cluster_name}-${var.env_name}"
 }
 
-## AWS VPC definition
+## AWS VPC 생성 관련 정의
+# 여기선 CIDR 블록과 태그 지정
+# 몇가지 변수 사용 → 변경 가능한 값 → 모듈 재사용 가능
 resource "aws_vpc" "main" {
-  cidr_block = var.main_vpc_cidr
+  cidr_block = var.main_vpc_cidr # CIDR 블록 변수정의 
   enable_dns_support = true
   enable_dns_hostnames = true
-
+  # 태그 추가
+  # 리소스 태그 추가 → 리소스 그룹을 쉽게 식별/관리 가능
+  # 자동화된 작업이나 특정 방식으로 관리할 리소스 식별시 유용
+  # 쿠버네티스 클러스터를 식별하는 쿠버네티스 태그도 정의
+  # (쿠버 클러스터는 EKS 노드 그룹 정의에서 정의)할 예정
+  
   tags = {
     "Name"                                        = local.vpc_name,
-    "kubernetes.io/cluster/${local.cluster_name}" = "shared",
+    "kubernetes.io/cluster/${local.cluster_name}" = "shared", # 이름태그도 변수
   }
 }
 
 data "aws_availability_zones" "available" {
-  state = "available"
+  state = "available" 
 }
 
 resource "aws_subnet" "public-subnet-a" {
