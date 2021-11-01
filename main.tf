@@ -19,12 +19,13 @@ resource "aws_vpc" "main" {
   cidr_block = var.main_vpc_cidr # CIDR 블록 변수정의 
   enable_dns_support = true
   enable_dns_hostnames = true
+
+  
   # 태그 추가
   # 리소스 태그 추가 → 리소스 그룹을 쉽게 식별/관리 가능
   # 자동화된 작업이나 특정 방식으로 관리할 리소스 식별시 유용
   # 쿠버네티스 클러스터를 식별하는 쿠버네티스 태그도 정의
   # (쿠버 클러스터는 EKS 노드 그룹 정의에서 정의)할 예정
-  
   tags = {
     "Name"                                        = local.vpc_name,
     "kubernetes.io/cluster/${local.cluster_name}" = "shared", # 이름태그도 변수
@@ -35,9 +36,15 @@ data "aws_availability_zones" "available" {
   state = "available" 
 }
 
+# AWS 가용영역
+# - 별도의 분리된 데이터센터 의미
+# - 배포시 2개 이상 가용영역 사용 → 하나가 다운되도 나머지 영역에서 서비스 중단 없이 작동
+# - EKS가 제대로 작동하려면 서로 다른 가용 영역에 서브넷 정의 필요
+# - AWS는 공개(인터넷 트래픽 허용) , 사설 서브넷(내부 트래픽만 허용)이 모두 있는 VPC 구성 권장
+# - 공개 서브넷 : LB배포 → 인바운드 트래픽 관리  → LB 통과 트래픽은 사설 서브넷의 EKS 마이크로서비스 컨테이너로 라우팅
 resource "aws_subnet" "public-subnet-a" {
   vpc_id            = aws_vpc.main.id
-  cidr_block        = var.public_subnet_a_cidr
+  cidr_block        = var.public_subnet_a_cidr #서브넷은 VPC 내부 → VPC 범위 내의 CIDR 블록이어야 함 →VPC와 마찬가지로 변수 사용
   availability_zone = data.aws_availability_zones.available.names[0]
 
   tags = {
