@@ -16,11 +16,11 @@ locals {
 # 여기선 CIDR 블록과 태그 지정
 # 몇가지 변수 사용 → 변경 가능한 값 → 모듈 재사용 가능
 resource "aws_vpc" "main" {
-  cidr_block = var.main_vpc_cidr # CIDR 블록 변수정의 
-  enable_dns_support = true
+  cidr_block           = var.main_vpc_cidr # CIDR 블록 변수정의 
+  enable_dns_support   = true
   enable_dns_hostnames = true
 
-  
+
   # 태그 추가
   # 리소스 태그 추가 → 리소스 그룹을 쉽게 식별/관리 가능
   # 자동화된 작업이나 특정 방식으로 관리할 리소스 식별시 유용
@@ -34,7 +34,7 @@ resource "aws_vpc" "main" {
 
 # 서브넷 
 data "aws_availability_zones" "available" {
-  state = "available" 
+  state = "available"
 }
 
 # AWS 가용영역
@@ -44,23 +44,23 @@ data "aws_availability_zones" "available" {
 # - AWS는 공개(인터넷 트래픽 허용) , 사설 서브넷(내부 트래픽만 허용)이 모두 있는 VPC 구성 권장
 # - 공개 서브넷 : LB배포 → 인바운드 트래픽 관리  → LB 통과 트래픽은 사설 서브넷의 EKS 마이크로서비스 컨테이너로 라우팅
 resource "aws_subnet" "public-subnet-a" {
-  vpc_id            = aws_vpc.main.id
+  vpc_id = aws_vpc.main.id
   # 서브넷은 VPC 내부 → VPC 범위 내의 CIDR 블록이어야 함 →VPC와 마찬가지로 변수 사용
-  cidr_block        = var.public_subnet_a_cidr
+  cidr_block = var.public_subnet_a_cidr
   # 가용 영역도 서브넷의 매개변수로 지정
   # 가용 영역 이름을 하드 코딩 하는 대신 영역을 동적으로 선택 가능한 data라는 특수한 영역
   # a에 [0], b에 [1]을 넣는다 
   # 동적 데이터 사용하면 다른 리전에서 인프라를 더 쉽게 가동 
   availability_zone = data.aws_availability_zones.available.names[0]
 
-  
+
   tags = {
     # 관리자와 운영자가 콘솔을 통해 네트워크 리소스를 쉽게 찾을 수 있도록 이름 태그 추가
-    "Name"                                        = "${local.vpc_name}-public-subnet-a"
+    "Name" = "${local.vpc_name}-public-subnet-a"
     # EKS 태그 추가 : AWS 쿠버네티스 서비스가 사용 중인 서브넷과 해당 서브넷이 무엇인지 알 수 있도록
     "kubernetes.io/cluster/${local.cluster_name}" = "shared"
     # elb 태그 추가 : EKS가 서브넷을 사용하여 ELB를 생성하고 배포 가능하도록 공개 서브넷에 지정
-    "kubernetes.io/role/elb"                      = "1"
+    "kubernetes.io/role/elb" = "1"
   }
 }
 
@@ -85,7 +85,7 @@ resource "aws_subnet" "private-subnet-a" {
     "Name"                                        = "${local.vpc_name}-private-subnet-a"
     "kubernetes.io/cluster/${local.cluster_name}" = "shared"
     # internal-elb 태그 추가 : 해당 태그로 워크로드가 배포되고 분산 될 수 있음
-    "kubernetes.io/role/internal-elb"             = "1"
+    "kubernetes.io/role/internal-elb" = "1"
   }
 }
 
