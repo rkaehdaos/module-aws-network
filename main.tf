@@ -102,19 +102,28 @@ resource "aws_subnet" "private-subnet-b" {
 }
 
 
+# 마지막 단계 - 서브넷 허용할 트래픽 소스를 정의하는 라우팅 테이블 설정
+# ex) 트래픽이 공개 서브넷을 통해 전달되는 방법, 각 서브넷 통신 가능한 방법 설정.
+# igw(internet gateway):  사설 클라우드를 공개 인터넷과 연결하는 AWS 네트워크 구성 요소
+# 테라폼은 igw 리소스 정의 제공
+# 
+
+# 공용 서브넷을 위한 인터넷 게이트웨이 및 라우팅 
 resource "aws_internet_gateway" "igw" {
-  vpc_id = aws_vpc.main.id
+  vpc_id = aws_vpc.main.id #이전에 생성한  VPC 연결
 
   tags = {
     Name = "${local.vpc_name}-igw"
   }
 }
 
+# 라우팅 규칙 정의 : 게이트웨이에서 서브넷으로 트래픽 라우팅하는 방법을 AWS에게 알리는
+# 
 resource "aws_route_table" "public-route" {
   vpc_id = aws_vpc.main.id
 
   route {
-    cidr_block = "0.0.0.0/0"
+    cidr_block = "0.0.0.0/0" #모든 트래픽을 게이트웨이를 통해 처리
     gateway_id = aws_internet_gateway.igw.id
   }
 
@@ -123,6 +132,7 @@ resource "aws_route_table" "public-route" {
   }
 }
 
+# 공개 서브넷과 라우팅 테이블 간의 연결 생성
 resource "aws_route_table_association" "public-a-association" {
   subnet_id      = aws_subnet.public-subnet-a.id
   route_table_id = aws_route_table.public-route.id
@@ -133,6 +143,14 @@ resource "aws_route_table_association" "public-b-association" {
   route_table_id = aws_route_table.public-route.id
 }
 
+
+# 공개 서브넷 라우팅 경로가 정의되면 2개의 사설 서브넷에 대한 라우팅 설정 진행
+# 사설은 공개서브넷 라우팅 구성보다 더 복잡해질 수 밖에 없다
+# ∵ k8s의 pod가 EKS 서비스와 통신할 수 있도록 사설 서브넷에서 인터넷으로 나가는 경로를 정의해야 함
+# ∴ 사설 서브넷에서 공개 서브넷에 배포한 igw와 통신할 수 있는 방법이 필요 - NAT 게이트웨이 리소스
+# EIP(Elastic IP) : NAT 생성할 떄 할당되는 특별한 IP로 인터넷에서 접근 가능한 실제 네트워크 IP
+
+# 2개의 EIP를 생성하야 NAT에 할당
 resource "aws_eip" "nat-a" {
   vpc = true
   tags = {
@@ -147,6 +165,7 @@ resource "aws_eip" "nat-b" {
   }
 }
 
+# nat gateway
 resource "aws_nat_gateway" "nat-gw-a" {
   allocation_id = aws_eip.nat-a.id
   subnet_id     = aws_subnet.public-subnet-a.id
